@@ -62,7 +62,7 @@ if (attendanceToggles.length > 0 && extraFields) {
   });
 }
 
-// ОТПРАВКА ФОРМЫ В TELEGRAM
+// ОТПРАВКА ФОРМЫ ЧЕРЕЗ NETLIFY FUNCTION
 const weddingForm = document.querySelector('form');
 const rsvpContainer = document.querySelector('.rsvp-panel');
 
@@ -75,37 +75,24 @@ if (weddingForm && rsvpContainer) {
     submitBtn.textContent = 'Отправка...';
     submitBtn.disabled = true;
 
-    // Собираем данные из формы
     const formData = new FormData(weddingForm);
-    const guestName = formData.get('Имя_гостя') || 'Не указано';
-    const attendance = formData.get('Присутствие') || 'Не указано';
-    const message = formData.get('Сообщение') || 'Нет сообщения';
-    const alcohol = formData.get('Алкоголь') || 'Не выбран';
-
-    // Текст сообщения
-    const text = `🎉 *Новая анкета!*
-👤 *Имя:* ${guestName}
-📅 *Присутствие:* ${attendance}
-💬 *Сообщение:* ${message}
-🍷 *Алкоголь:* ${alcohol}`;
-
-    // Настройки бота – вставьте свои значения
-    const BOT_TOKEN = '8962443036:AAHn9ZY2KRuvqomf-37ExTwlZ2-KFXUPryA';
-    const CHAT_ID = '-1003926368528';  // ваш ID группы
+    const data = {
+      guestName: formData.get('Имя_гостя') || '',
+      attendance: formData.get('Присутствие') || '',
+      message: formData.get('Сообщение') || '',
+      alcohol: formData.get('Алкоголь') || ''
+    };
 
     try {
-      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      const response = await fetch('/.netlify/functions/send-rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: text,
-          parse_mode: 'Markdown'
-        })
+        body: JSON.stringify(data)
       });
 
-      if (response.ok) {
-        // Успешно – показываем благодарность
+      const result = await response.json();
+
+      if (result.success) {
         rsvpContainer.innerHTML = `
           <div class="text-center py-8 animate-fade-in">
             <h4 class="heading-font text-2xl md:text-5xl text-[#7b866f]">СПАСИБО!</h4>
@@ -116,10 +103,10 @@ if (weddingForm && rsvpContainer) {
           </div>
         `;
       } else {
-        throw new Error('Ошибка Telegram');
+        throw new Error(result.error || 'Ошибка сервера');
       }
     } catch (error) {
-      alert('Произошла ошибка при отправке. Пожалуйста, проверьте интернет и попробуйте ещё раз.');
+      alert('Произошла ошибка. Пожалуйста, проверьте интернет и попробуйте ещё раз.');
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
     }
