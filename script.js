@@ -62,32 +62,50 @@ if (attendanceToggles.length > 0 && extraFields) {
   });
 }
 
-// ОТПРАВКА ФОРМЫ БЕЗ ПЕРЕЗАГРУЗКИ СТРАНИЦЫ
+// ОТПРАВКА ФОРМЫ В TELEGRAM
 const weddingForm = document.querySelector('form');
 const rsvpContainer = document.querySelector('.rsvp-panel');
 
 if (weddingForm && rsvpContainer) {
   weddingForm.addEventListener('submit', async function(event) {
-    event.preventDefault(); // Блокируем переход на сайт Formspree
-    
+    event.preventDefault();
+
     const submitBtn = weddingForm.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Отправка...';
     submitBtn.disabled = true;
 
+    // Собираем данные из формы
     const formData = new FormData(weddingForm);
-    
+    const guestName = formData.get('Имя_гостя') || 'Не указано';
+    const attendance = formData.get('Присутствие') || 'Не указано';
+    const message = formData.get('Сообщение') || 'Нет сообщения';
+    const alcohol = formData.get('Алкоголь') || 'Не выбран';
+
+    // Текст сообщения
+    const text = `🎉 *Новая анкета!*
+👤 *Имя:* ${guestName}
+📅 *Присутствие:* ${attendance}
+💬 *Сообщение:* ${message}
+🍷 *Алкоголь:* ${alcohol}`;
+
+    // Настройки бота – вставьте свои значения
+    const BOT_TOKEN = '8962443036:AAHn9ZY2KRuvqomf-37ExTwlZ2-KFXUPryA';
+    const CHAT_ID = '-1003926368528';  // ваш ID группы
+
     try {
-      const response = await fetch(weddingForm.action, {
-        method: weddingForm.method,
-        body: formData,
-        headers: {
-          'Accept': 'application/json'
-        }
+      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: text,
+          parse_mode: 'Markdown'
+        })
       });
-      
+
       if (response.ok) {
-        // Плавно заменяем анкету на текст благодарности
+        // Успешно – показываем благодарность
         rsvpContainer.innerHTML = `
           <div class="text-center py-8 animate-fade-in">
             <h4 class="heading-font text-2xl md:text-5xl text-[#7b866f]">СПАСИБО!</h4>
@@ -98,10 +116,10 @@ if (weddingForm && rsvpContainer) {
           </div>
         `;
       } else {
-        throw new Error('Ошибка при отправке');
+        throw new Error('Ошибка Telegram');
       }
     } catch (error) {
-      alert('Произошла ошибка. Пожалуйста, проверьте интернет и попробуйте еще раз.');
+      alert('Произошла ошибка при отправке. Пожалуйста, проверьте интернет и попробуйте ещё раз.');
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
     }
